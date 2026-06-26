@@ -1,0 +1,43 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: freight_ops_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-freight_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-freight_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-freight_ops}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-freight_user} -d ${POSTGRES_DB:-freight_ops}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: freight_ops_backend
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-freight_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-freight_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-freight_ops}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-this-later}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 1440
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
