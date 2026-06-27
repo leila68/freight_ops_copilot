@@ -1,26 +1,28 @@
-import { api } from "./client"
-import type {
-  AuthResponse,
-  LoginRequest,
-  SignupRequest,
-  User,
-} from "@/types"
+import { api, setAuthToken } from "./client"
+import type { AuthResponse, LoginRequest, SignupRequest, User } from "@/types"
 
-// Auth endpoints.
-// TODO: confirm endpoint paths and response shapes with the FastAPI backend.
 export const authApi = {
-  login: async (payload: LoginRequest): Promise<AuthResponse> => {
+  login: async (payload: LoginRequest): Promise<{ access_token: string; user: User }> => {
     const { data } = await api.post<AuthResponse>("/auth/login", payload)
-    return data
+    // Set token immediately so the /auth/me call is authenticated
+    setAuthToken(data.access_token)
+    const user = await authApi.me()
+    return { access_token: data.access_token, user }
   },
 
-  signup: async (payload: SignupRequest): Promise<AuthResponse> => {
-    const { data } = await api.post<AuthResponse>("/auth/signup", payload)
-    return data
+  signup: async (payload: SignupRequest): Promise<{ access_token: string; user: User }> => {
+    const { data } = await api.post<AuthResponse>("/auth/signup", {
+      email: payload.email,
+      password: payload.password,
+      full_name: payload.full_name,       // matches backend field name
+      role: payload.role,
+      company_name: payload.company_name, // matches backend field name
+    })
+    setAuthToken(data.access_token)
+    const user = await authApi.me()
+    return { access_token: data.access_token, user }
   },
 
-  // Optional: validate / fetch the current user from a token.
-  // TODO: confirm whether backend exposes GET /auth/me
   me: async (): Promise<User> => {
     const { data } = await api.get<User>("/auth/me")
     return data

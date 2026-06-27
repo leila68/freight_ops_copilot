@@ -37,7 +37,7 @@ export function AuthPage() {
       const user =
         mode === "login"
           ? await login({ email, password })
-          : await signup({ email, password, name, role, company })
+          : await signup({ email, password, full_name: name, role, company_name: company })
       // Route by role.
       navigate(user.role === "staff" ? "/staff" : "/customer", {
         replace: true,

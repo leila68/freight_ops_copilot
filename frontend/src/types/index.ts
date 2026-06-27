@@ -6,13 +6,12 @@ export type UserRole = "staff" | "customer"
 export interface User {
   id: string
   email: string
-  name: string
+  full_name: string       
   role: UserRole
-  // TODO: backend may include company_id / organization fields
-  company?: string
+  company_name?: string   
+  is_active: boolean
+  created_at: string
 }
-
-// --- Auth ---
 
 export interface LoginRequest {
   email: string
@@ -22,16 +21,16 @@ export interface LoginRequest {
 export interface SignupRequest {
   email: string
   password: string
-  name: string
-  role: UserRole // assumption: customers self-signup; see note in AuthPage
-  company?: string
+  full_name: string      
+  role: UserRole
+  company_name?: string   
 }
 
 export interface AuthResponse {
-  // TODO: confirm token field name (access_token vs token) with backend
   access_token: string
-  user: User
+  token_type: string
 }
+
 
 // --- Reference data ---
 
