@@ -57,7 +57,7 @@ def get_current_user(
     return user
 
 
-@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
 def signup(payload: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
@@ -75,7 +75,10 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return new_user
+
+    # Return a token immediately so the user is logged in after signup
+    token = create_access_token(user_id=str(new_user.id), role=new_user.role)
+    return Token(access_token=token)
 
 
 @router.post("/login", response_model=Token)

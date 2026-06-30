@@ -18,7 +18,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=255)
-    role: str = Field(pattern="^(staff|customer)$")
+    # role: str = Field(pattern="^(staff|customer)$")
+    role: str = Field(default="customer", pattern="^(staff|customer)$")
     company_name: str | None = None
 
 

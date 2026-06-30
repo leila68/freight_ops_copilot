@@ -42,21 +42,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null)
   }, [logout])
 
-  const login = useCallback(async (payload: LoginRequest) => {
-    const res = await authApi.login(payload)
-    setAuthToken(res.access_token)
-    setToken(res.access_token)
-    setUser(res.user)
-    return res.user
-  }, [])
+const login = useCallback(async (payload: LoginRequest) => {
+  const res = await authApi.login(payload)
+  setAuthToken(res.access_token)  // still needed for future requests after login
+  setToken(res.access_token)
+  setUser(res.user)
+  return res.user
+}, [])
 
-  const signup = useCallback(async (payload: SignupRequest) => {
-    const res = await authApi.signup(payload)
-    setAuthToken(res.access_token)
-    setToken(res.access_token)
-    setUser(res.user)
-    return res.user
-  }, [])
+const signup = useCallback(async (payload: SignupRequest) => {
+  const res = await authApi.signup(payload)
+  setAuthToken(res.access_token)  // still needed for future requests after signup
+  setToken(res.access_token)
+  setUser(res.user)
+  return res.user
+}, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -149,7 +149,7 @@ export function AuthPage() {
                       autoComplete="organization"
                     />
                   </Field>
-                  <Field label="Account type" htmlFor="role">
+                  {/* <Field label="Account type" htmlFor="role">
                     <Select
                       id="role"
                       value={role}
@@ -159,7 +159,7 @@ export function AuthPage() {
                         { value: "staff", label: "Staff (Freight operator)" },
                       ]}
                     />
-                  </Field>
+                  </Field> */}
                 </>
               )}
 
