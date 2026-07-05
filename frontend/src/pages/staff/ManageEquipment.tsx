@@ -23,12 +23,12 @@ export function ManageEquipment() {
       emptyForm={emptyForm}
       toForm={(e) => ({
         name: e.name,
-        multiplier: e.multiplier,
+        multiplier: Number(e.multiplier),
         description: e.description ?? "",
       })}
       columns={[
         { header: "Name", render: (e) => e.name },
-        { header: "Multiplier", align: "right", render: (e) => `${e.multiplier.toFixed(2)}x` },
+        { header: "Multiplier", align: "right", render: (e) => `${Number(e.multiplier).toFixed(2)}x` },
         { header: "Description", render: (e) => e.description || "—" },
       ]}
       fields={[
