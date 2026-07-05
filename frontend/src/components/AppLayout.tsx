@@ -1,16 +1,21 @@
 import { Outlet } from "react-router-dom"
 import { AppHeader } from "./AppHeader"
+import { AppSidebar } from "./AppSidebar"
 import { CopilotPanel } from "./copilot/CopilotPanel"
 
-// Shared shell for authenticated pages: header nav + page content + the
-// floating AI Copilot available on every dashboard.
 export function AppLayout() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <Outlet />
-      </main>
+
+      <div className="mx-auto flex max-w-8xl">
+        <AppSidebar />
+
+        <main className="w-full px-6 py-6">
+          <Outlet />
+        </main>
+      </div>
+
       <CopilotPanel />
     </div>
   )
