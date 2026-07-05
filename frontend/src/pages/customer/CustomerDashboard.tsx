@@ -3,7 +3,6 @@ import { PageHeader } from "@/components/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
 import { QuoteForm } from "./QuoteForm"
 import { QuoteBreakdownCard } from "./QuoteBreakdownCard"
-import { QuoteTable } from "@/components/QuoteTable"
 import { ErrorState } from "@/components/ui/States"
 import { useAsync } from "@/hooks/useAsync"
 import { quoteApi } from "@/api/freight"
@@ -40,7 +39,7 @@ export function CustomerDashboard() {
     <div>
       <PageHeader
         title="Customer dashboard"
-        description="Request freight quotes and review your quote history."
+        description="Request freight quotes"
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -72,20 +71,6 @@ export function CustomerDashboard() {
           )}
         </div>
       </div>
-
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Quote history</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <QuoteTable
-            quotes={history.data ?? []}
-            loading={history.loading}
-            error={history.error}
-            onRetry={() => history.refetch().catch(() => {})}
-          />
-        </CardContent>
-      </Card>
     </div>
   )
 }
