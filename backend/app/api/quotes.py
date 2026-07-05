@@ -1,10 +1,10 @@
 """
 Quote endpoints:
-- POST /quotes/calculate  — calculate + save a quote
-- GET  /quotes            — list quotes (scoped by role)
+- POST /quotes/preview  — calculate breakdown, does NOT save to DB
+- POST /quotes/book     — calculate + save quote to DB
+- GET  /quotes          — list quotes (scoped by role)
 """
 import json
-from uuid import UUID
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,29 +12,34 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.db.models import User, Lane, EquipmentType, Accessorial, Quote, QuoteAccessorial, Setting
-from app.schemas.quotes import QuoteCalculateRequest, QuoteBreakdownResponse, QuoteResponse, AccessorialLineItem
+from app.schemas.quotes import (
+    QuoteCalculateRequest,
+    QuoteBreakdownResponse,
+    QuoteResponse,
+    AccessorialLineItem,
+)
 from app.api.auth import get_current_user
 
 router = APIRouter(tags=["quotes"])
 
-# Weight factor: extra charge per 100 lbs over 10,000 lbs
 WEIGHT_THRESHOLD_LBS = 10_000
 WEIGHT_EXTRA_PER_100_LBS = Decimal("0.10")
 
 
 def get_fuel_surcharge(db: Session) -> Decimal:
     setting = db.query(Setting).filter(Setting.key == "fuel_surcharge_percent").first()
-    if not setting:
-        return Decimal("8.00")
-    return Decimal(setting.value)
+    return Decimal(setting.value) if setting else Decimal("8.00")
 
 
-@router.post("/quotes/calculate", response_model=QuoteBreakdownResponse, status_code=201)
-def calculate_quote(
+def _calculate_breakdown(
     payload: QuoteCalculateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
+    db: Session,
+) -> tuple[QuoteBreakdownResponse, Lane, EquipmentType]:
+    """
+    Shared calculation logic used by both /preview and /book.
+    Returns the breakdown plus the lane and equipment objects
+    so /book can use them without re-querying.
+    """
     # 1. Find matching lane
     lane = db.query(Lane).filter(
         Lane.origin_city.ilike(payload.origin_city),
@@ -47,9 +52,11 @@ def calculate_quote(
     if not lane:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No lane found for {payload.origin_city}, {payload.origin_province} "
-                   f"→ {payload.destination_city}, {payload.destination_province}. "
-                   f"Please contact us for a custom quote."
+            detail=(
+                f"No lane found for {payload.origin_city}, {payload.origin_province} "
+                f"→ {payload.destination_city}, {payload.destination_province}. "
+                f"Please contact us for a custom quote."
+            ),
         )
 
     # 2. Find equipment type
@@ -61,12 +68,11 @@ def calculate_quote(
     if not equipment:
         raise HTTPException(status_code=404, detail="Equipment type not found.")
 
-    # 3. Calculate rate components
+    # 3. Rate components
     base_rate = Decimal(str(lane.base_rate))
     multiplier = Decimal(str(equipment.multiplier))
     equipment_adjustment = base_rate * (multiplier - 1)
 
-    # Weight factor: $0.10 per 100 lbs over 10,000 lbs
     weight = Decimal(str(payload.total_weight))
     if weight > WEIGHT_THRESHOLD_LBS:
         excess_lbs = weight - WEIGHT_THRESHOLD_LBS
@@ -76,12 +82,11 @@ def calculate_quote(
         weight_adjustment = Decimal("0")
         weight_factor = Decimal("1")
 
-    # Fuel surcharge on base rate
     fuel_pct = get_fuel_surcharge(db)
     fuel_surcharge = base_rate * (fuel_pct / 100)
 
     # 4. Accessorials
-    accessorial_items = []
+    accessorial_items: list[AccessorialLineItem] = []
     accessorials_total = Decimal("0")
 
     if payload.accessorial_ids:
@@ -91,19 +96,24 @@ def calculate_quote(
         ).all()
 
         for acc in accessorials:
-            if acc.charge_type == "flat":
-                fee = Decimal(str(acc.amount))
-            else:
-                fee = base_rate * (Decimal(str(acc.amount)) / 100)
-
-            accessorial_items.append(AccessorialLineItem(
-                id=acc.id, name=acc.name, fee=fee
-            ))
+            fee = (
+                Decimal(str(acc.amount))
+                if acc.charge_type == "flat"
+                else base_rate * (Decimal(str(acc.amount)) / 100)
+            )
+            accessorial_items.append(
+                AccessorialLineItem(id=acc.id, name=acc.name, fee=fee)
+            )
             accessorials_total += fee
 
     # 5. Total
-    total = base_rate + equipment_adjustment + weight_adjustment + fuel_surcharge + accessorials_total
-    total = total.quantize(Decimal("0.01"))
+    total = (
+        base_rate
+        + equipment_adjustment
+        + weight_adjustment
+        + fuel_surcharge
+        + accessorials_total
+    ).quantize(Decimal("0.01"))
 
     breakdown = QuoteBreakdownResponse(
         base_rate=base_rate,
@@ -116,35 +126,66 @@ def calculate_quote(
         total=total,
     )
 
-    # 6. Save quote to DB
+    return breakdown, lane, equipment
+
+
+@router.post("/quotes/preview", response_model=QuoteBreakdownResponse)
+def preview_quote(
+    payload: QuoteCalculateRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """
+    Calculate a quote breakdown without saving anything to DB.
+    Used to show the customer a preview before they confirm.
+    """
+    breakdown, _, _ = _calculate_breakdown(payload, db)
+    return breakdown
+
+
+@router.post("/quotes/book", response_model=QuoteBreakdownResponse, status_code=201)
+def book_quote(
+    payload: QuoteCalculateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Calculate + save the quote to DB.
+    Called only when the customer confirms the preview.
+    """
+    breakdown, lane, equipment = _calculate_breakdown(payload, db)
+
     quote = Quote(
         customer_id=current_user.id,
         lane_id=lane.id,
         equipment_type_id=equipment.id,
-        total_weight=weight,
+        total_weight=Decimal(str(payload.total_weight)),
         pickup_date=payload.pickup_date,
         status="pending",
-        base_rate=base_rate,
-        equipment_adjustment=equipment_adjustment.quantize(Decimal("0.01")),
-        weight_adjustment=weight_adjustment.quantize(Decimal("0.01")),
-        fuel_surcharge=fuel_surcharge.quantize(Decimal("0.01")),
-        accessorials_total=accessorials_total.quantize(Decimal("0.01")),
-        total_price=total,
+        base_rate=breakdown.base_rate,
+        equipment_adjustment=breakdown.equipment_adjustment,
+        weight_adjustment=breakdown.weight_adjustment,
+        fuel_surcharge=breakdown.fuel_surcharge,
+        accessorials_total=sum(a.fee for a in breakdown.accessorials),
+        total_price=breakdown.total,
         breakdown_json=json.dumps({
-            "base_rate": str(base_rate),
-            "equipment_multiplier": str(multiplier),
-            "equipment_adjustment": str(equipment_adjustment),
-            "weight_factor": str(weight_factor),
-            "weight_adjustment": str(weight_adjustment),
-            "fuel_surcharge": str(fuel_surcharge),
-            "accessorials": [{"id": str(a.id), "name": a.name, "fee": str(a.fee)} for a in accessorial_items],
-            "total": str(total),
+            "base_rate": str(breakdown.base_rate),
+            "equipment_multiplier": str(breakdown.equipment_multiplier),
+            "equipment_adjustment": str(breakdown.equipment_adjustment),
+            "weight_factor": str(breakdown.weight_factor),
+            "weight_adjustment": str(breakdown.weight_adjustment),
+            "fuel_surcharge": str(breakdown.fuel_surcharge),
+            "accessorials": [
+                {"id": str(a.id), "name": a.name, "fee": str(a.fee)}
+                for a in breakdown.accessorials
+            ],
+            "total": str(breakdown.total),
         }),
     )
     db.add(quote)
     db.flush()
 
-    for item in accessorial_items:
+    for item in breakdown.accessorials:
         db.add(QuoteAccessorial(
             quote_id=quote.id,
             accessorial_id=item.id,
@@ -152,7 +193,6 @@ def calculate_quote(
         ))
 
     db.commit()
-
     return breakdown
 
 
@@ -163,7 +203,6 @@ def list_quotes(
 ):
     query = db.query(Quote)
 
-    # Customers see only their own quotes; staff see all
     if current_user.role == "customer":
         query = query.filter(Quote.customer_id == current_user.id)
 
@@ -181,7 +220,9 @@ def list_quotes(
                 weight_factor=Decimal(raw["weight_factor"]),
                 weight_adjustment=Decimal(raw["weight_adjustment"]),
                 fuel_surcharge=Decimal(raw["fuel_surcharge"]),
-                accessorials=[AccessorialLineItem(**a) for a in raw["accessorials"]],
+                accessorials=[
+                    AccessorialLineItem(**a) for a in raw["accessorials"]
+                ],
                 total=Decimal(raw["total"]),
             )
 
