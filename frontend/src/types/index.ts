@@ -56,10 +56,14 @@ export interface Accessorial {
 
 export interface Lane {
   id: string
-  origin: string // "City, PROV"
-  destination: string // "City, PROV"
+  origin_city: string
+  origin_province: string
+  destination_city: string
+  destination_province: string
   base_rate: number
-  distance: number // miles or km
+  distance_km: number
+  transit_days: number
+  is_active: boolean
 }
 
 // --- Quotes ---

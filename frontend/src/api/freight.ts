@@ -53,11 +53,11 @@ export const laneApi = {
     const { data } = await api.get<Lane[]>("/lanes")
     return data
   },
-  create: async (payload: Omit<Lane, "id">): Promise<Lane> => {
+  create: async (payload: Omit<Lane, "id" | "is_active">): Promise<Lane> => {
     const { data } = await api.post<Lane>("/lanes", payload)
     return data
   },
-  update: async (id: string, payload: Omit<Lane, "id">): Promise<Lane> => {
+  update: async (id: string, payload: Omit<Lane, "id" | "is_active">): Promise<Lane> => {
     const { data } = await api.put<Lane>(`/lanes/${id}`, payload)
     return data
   },
