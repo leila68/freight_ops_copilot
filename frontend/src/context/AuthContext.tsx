@@ -26,10 +26,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [token, setToken] = useState<string | null>(localStorage.getItem("auth_token"))
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
 
   const logout = useCallback(() => {
+    localStorage.removeItem("auth_token")
     setUser(null)
     setToken(null)
     setAuthToken(null)
@@ -42,21 +43,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null)
   }, [logout])
 
-const login = useCallback(async (payload: LoginRequest) => {
-  const res = await authApi.login(payload)
-  setAuthToken(res.access_token)  // still needed for future requests after login
-  setToken(res.access_token)
-  setUser(res.user)
-  return res.user
-}, [])
+  useEffect(() => {
+    const savedToken = localStorage.getItem("auth_token")
+    if (savedToken && !user) {
+      setAuthToken(savedToken)
+      authApi.me(savedToken)
+        .then((u) => setUser(u))
+        .catch(() => {
+          localStorage.removeItem("auth_token")
+          setToken(null)
+          setAuthToken(null)
+        })
+    }
+  }, [])
 
-const signup = useCallback(async (payload: SignupRequest) => {
-  const res = await authApi.signup(payload)
-  setAuthToken(res.access_token)  // still needed for future requests after signup
-  setToken(res.access_token)
-  setUser(res.user)
-  return res.user
-}, [])
+  const login = useCallback(async (payload: LoginRequest) => {
+    const res = await authApi.login(payload)
+    localStorage.setItem("auth_token", res.access_token)
+    setAuthToken(res.access_token)
+    setToken(res.access_token)
+    setUser(res.user)
+    return res.user
+  }, [])
+
+  const signup = useCallback(async (payload: SignupRequest) => {
+    const res = await authApi.signup(payload)
+    localStorage.setItem("auth_token", res.access_token)
+    setAuthToken(res.access_token)
+    setToken(res.access_token)
+    setUser(res.user)
+    return res.user
+  }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({
