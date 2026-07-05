@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { AppLayout } from "@/components/AppLayout"
 import { AuthPage } from "@/pages/AuthPage"
 import { CustomerDashboard } from "@/pages/customer/CustomerDashboard"
+import { CustomerQuoteHistory } from "@/pages/customer/QuoteHistory"
 import { StaffQuotes } from "@/pages/staff/StaffQuotes"
 import { ManageLanes } from "@/pages/staff/ManageLanes"
 import { ManageEquipment } from "@/pages/staff/ManageEquipment"
@@ -39,6 +40,7 @@ function AppRoutes() {
         }
       >
         <Route path="/customer" element={<CustomerDashboard />} />
+        <Route path="/customer/quotehistory" element={<CustomerQuoteHistory />} />
       </Route>
 
       {/* Staff */}

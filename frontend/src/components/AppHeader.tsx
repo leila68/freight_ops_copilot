@@ -10,7 +10,11 @@ interface NavItem {
 }
 
 // Navigation differs by role.
-const customerNav: NavItem[] = [{ to: "/customer", label: "Dashboard" }]
+const customerNav: NavItem[] = [
+  { to: "/customer", label: "Dashboard" },
+  { to: "/customer/quotehistory", label: "Quote History" },
+
+]
 
 const staffNav: NavItem[] = [
   { to: "/staff", label: "Quotes" },
@@ -46,7 +50,8 @@ export function AppHeader() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/staff" || item.to === "/customer"}
+              // end={item.to === "/staff" || item.to === "/customer"}
+              end={item.to === "/customer" || item.to === "/staff"}
               className={({ isActive }) =>
                 cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
@@ -63,7 +68,7 @@ export function AppHeader() {
 
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium leading-tight">{user?.name}</p>
+            <p className="text-sm font-medium leading-tight">{user?.full_name}</p>
             <p className="text-xs capitalize text-muted-foreground">
               {user?.role}
             </p>
