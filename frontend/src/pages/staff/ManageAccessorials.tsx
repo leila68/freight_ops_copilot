@@ -26,7 +26,8 @@ export function ManageAccessorials() {
       toForm={(a) => ({
         name: a.name,
         charge_type: a.charge_type,
-        amount: a.amount,
+        // amount: a.amount,
+        amount: Number(a.amount),
         description: a.description ?? "",
       })}
       columns={[
