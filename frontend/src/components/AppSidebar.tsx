@@ -13,7 +13,8 @@ const customerNav: NavItem[] = [
 ]
 
 const staffNav: NavItem[] = [
-  { to: "/staff", label: "Quotes" },
+  { to: "/staff", label: "Dashboard" },
+  { to: "/staff/staffquote", label: "Quotes" },
   { to: "/staff/lanes", label: "Lanes" },
   { to: "/staff/equipment", label: "Equipment" },
   { to: "/staff/accessorials", label: "Accessorials" },

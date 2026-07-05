@@ -5,10 +5,12 @@ import { AppLayout } from "@/components/AppLayout"
 import { AuthPage } from "@/pages/AuthPage"
 import { CustomerDashboard } from "@/pages/customer/CustomerDashboard"
 import { CustomerQuoteHistory } from "@/pages/customer/QuoteHistory"
+import { StaffDashboard } from "@/pages/staff/StaffDashboard"
 import { StaffQuotes } from "@/pages/staff/StaffQuotes"
 import { ManageLanes } from "@/pages/staff/ManageLanes"
 import { ManageEquipment } from "@/pages/staff/ManageEquipment"
 import { ManageAccessorials } from "@/pages/staff/ManageAccessorials"
+
 
 // Sends already-authenticated users away from the login screen.
 function LoginRoute() {
@@ -51,7 +53,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/staff" element={<StaffQuotes />} />
+        <Route path="/staff" element={<StaffDashboard />} />
+        <Route path="/staff/staffquote" element={<StaffQuotes />} />
         <Route path="/staff/lanes" element={<ManageLanes />} />
         <Route path="/staff/equipment" element={<ManageEquipment />} />
         <Route path="/staff/accessorials" element={<ManageAccessorials />} />
