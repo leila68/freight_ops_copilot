@@ -10,6 +10,7 @@ import { StaffQuotes } from "@/pages/staff/StaffQuotes"
 import { ManageLanes } from "@/pages/staff/ManageLanes"
 import { ManageEquipment } from "@/pages/staff/ManageEquipment"
 import { ManageAccessorials } from "@/pages/staff/ManageAccessorials"
+import { Setting } from "@/pages/staff/Setting"
 
 
 // Sends already-authenticated users away from the login screen.
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/staff/lanes" element={<ManageLanes />} />
         <Route path="/staff/equipment" element={<ManageEquipment />} />
         <Route path="/staff/accessorials" element={<ManageAccessorials />} />
+        <Route path="/staff/setting" element={<Setting />} />
       </Route>
 
       <Route path="/" element={<RootRedirect />} />

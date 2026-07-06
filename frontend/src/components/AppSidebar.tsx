@@ -18,6 +18,7 @@ const staffNav: NavItem[] = [
   { to: "/staff/lanes", label: "Lanes" },
   { to: "/staff/equipment", label: "Equipment" },
   { to: "/staff/accessorials", label: "Accessorials" },
+  { to: "/staff/setting", label: "Setting" },
 ]
 
 export function AppSidebar() {
