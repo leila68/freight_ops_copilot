@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { Truck, LogOut } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
+import { useState, useEffect } from "react"
 
 
 interface NavItem {
@@ -15,7 +16,18 @@ interface NavItem {
 export function AppHeader() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  
+
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"))
+  }, [])
+
+  const toggleDarkMode = () => {
+    const newDark = !document.documentElement.classList.contains("dark")
+    document.documentElement.classList.toggle("dark")
+    setIsDark(newDark)
+  }
 
   const handleLogout = () => {
     logout()
@@ -36,6 +48,15 @@ export function AppHeader() {
 
 
         <div className="flex items-center gap-3">
+          {/* Dark mode toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleDarkMode}
+            aria-label="Toggle dark mode"
+          >
+            {isDark ? "☀️" : "🌙"}
+          </Button>
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium leading-tight">{user?.full_name}</p>
             <p className="text-xs capitalize text-muted-foreground">
