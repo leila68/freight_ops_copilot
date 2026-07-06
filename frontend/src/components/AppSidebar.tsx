@@ -25,7 +25,7 @@ export function AppSidebar() {
   const items = user?.role === "staff" ? staffNav : customerNav
 
   return (
-    <aside className="w-70 border-r border-border p-4">
+    <aside className="w-80 border-r border-border p-4">
       <nav className="flex flex-col gap-1">
         {items.map((item) => (
           <NavLink

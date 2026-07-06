@@ -11,7 +11,7 @@ export function AppLayout() {
       <div className="mx-auto flex max-w-8xl">
         <AppSidebar />
 
-        <main className="w-full px-6 py-6">
+        <main className="w-full px-10 py-8">
           <Outlet />
         </main>
       </div>
