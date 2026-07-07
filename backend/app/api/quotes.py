@@ -176,6 +176,7 @@ def book_quote(
             "weight_factor": str(breakdown.weight_factor),
             "weight_adjustment": str(breakdown.weight_adjustment),
             "fuel_surcharge": str(breakdown.fuel_surcharge),
+            "fuel_surcharge_percent": str(breakdown.fuel_surcharge_percent),
             "accessorials": [
                 {"id": str(a.id), "name": a.name, "fee": str(a.fee)}
                 for a in breakdown.accessorials
@@ -220,6 +221,9 @@ def list_quotes(
                 equipment_adjustment=Decimal(raw["equipment_adjustment"]),
                 weight_factor=Decimal(raw["weight_factor"]),
                 weight_adjustment=Decimal(raw["weight_adjustment"]),
+                fuel_surcharge_percent=Decimal(
+                   raw.get("fuel_surcharge_percent", "8.00")
+                ),
                 fuel_surcharge=Decimal(raw["fuel_surcharge"]),
                 accessorials=[
                     AccessorialLineItem(**a) for a in raw["accessorials"]
