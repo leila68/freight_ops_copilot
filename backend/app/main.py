@@ -8,6 +8,7 @@ from app.db.models import User  # noqa: F401
 from app.api.auth import router as auth_router
 from app.api.freight import router as freight_router
 from app.api.quotes import router as quotes_router
+from app.api.settings import router as settings_router
 
 app = FastAPI(title="Freight Ops Copilot API")
 
@@ -22,6 +23,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(freight_router)
 app.include_router(quotes_router)
+app.include_router(settings_router)
 
 
 @app.get("/health")
