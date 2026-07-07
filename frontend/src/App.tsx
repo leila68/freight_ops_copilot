@@ -10,6 +10,7 @@ import { StaffQuotes } from "@/pages/staff/StaffQuotes"
 import { ManageLanes } from "@/pages/staff/ManageLanes"
 import { ManageEquipment } from "@/pages/staff/ManageEquipment"
 import { ManageAccessorials } from "@/pages/staff/ManageAccessorials"
+import { ManageDocuments } from "./pages/staff/ManageDocuments"
 import { ManageSettings } from "@/pages/staff/Setting"
 
 
@@ -59,6 +60,7 @@ function AppRoutes() {
         <Route path="/staff/lanes" element={<ManageLanes />} />
         <Route path="/staff/equipment" element={<ManageEquipment />} />
         <Route path="/staff/accessorials" element={<ManageAccessorials />} />
+        <Route path="/staff/documents" element={<ManageDocuments />} />
         <Route path="/staff/setting" element={<ManageSettings />} />
       </Route>
 
