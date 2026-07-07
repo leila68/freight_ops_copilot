@@ -9,8 +9,7 @@ import type {
   QuoteFilters,
 } from "@/types"
 
-// Reference data endpoints (equipment types, accessorials, lanes).
-// TODO: confirm endpoint paths and response shapes with the FastAPI backend.
+// Reference data endpoints (equipment types, accessorials, lanes, setting).
 
 export const equipmentApi = {
   list: async (): Promise<EquipmentType[]> => {
@@ -80,5 +79,20 @@ export const quoteApi = {
   list: async (filters?: QuoteFilters): Promise<Quote[]> => {
     const { data } = await api.get<Quote[]>("/quotes", { params: filters })
     return data
+  },
+}
+
+export const settingsApi = {
+  list: async () => {
+    const response = await api.get("/settings")
+    return response.data
+  },
+
+  update: async (key: string, payload: { value: string }) => {
+    const response = await api.put(
+      `/settings/${key}`,
+      payload
+    )
+    return response.data
   },
 }
