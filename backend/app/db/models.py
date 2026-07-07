@@ -96,8 +96,17 @@ class Quote(Base):
     total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     breakdown_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    fuel_surcharge_percent: Mapped[Decimal] = mapped_column( Numeric(5, 2), nullable=False, server_default="8.00")
 
     customer: Mapped["User"] = relationship("User", back_populates="quotes")
     lane: Mapped["Lane"] = relationship("Lane", back_populates="quotes")
     equipment_type: Mapped["EquipmentType"] = relationship("EquipmentType", back_populates="quotes")
     accessorials: Mapped[list["QuoteAccessorial"]] = relationship("QuoteAccessorial", cascade="all, delete-orphan")
+    
+class Setting(Base):
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))

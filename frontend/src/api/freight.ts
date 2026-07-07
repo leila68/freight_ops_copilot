@@ -9,8 +9,7 @@ import type {
   QuoteFilters,
 } from "@/types"
 
-// Reference data endpoints (equipment types, accessorials, lanes).
-// TODO: confirm endpoint paths and response shapes with the FastAPI backend.
+// Reference data endpoints (equipment types, accessorials, lanes, setting).
 
 export const equipmentApi = {
   list: async (): Promise<EquipmentType[]> => {
@@ -67,18 +66,33 @@ export const laneApi = {
 }
 
 export const quoteApi = {
-  // Calculate a quote breakdown without necessarily persisting it.
-  calculate: async (
-    payload: QuoteCalculateRequest,
-  ): Promise<QuoteBreakdown> => {
-    const { data } = await api.post<QuoteBreakdown>("/quotes/calculate", payload)
+  preview: async (payload: QuoteCalculateRequest): Promise<QuoteBreakdown> => {
+    const { data } = await api.post<QuoteBreakdown>("/quotes/preview", payload)
     return data
   },
 
-  // List quotes. Customers receive only their own; staff receive all.
-  // Filters are passed as query params. TODO: confirm param names with backend.
+  book: async (payload: QuoteCalculateRequest): Promise<QuoteBreakdown> => {
+    const { data } = await api.post<QuoteBreakdown>("/quotes/book", payload)
+    return data
+  },
+
   list: async (filters?: QuoteFilters): Promise<Quote[]> => {
     const { data } = await api.get<Quote[]>("/quotes", { params: filters })
     return data
+  },
+}
+
+export const settingsApi = {
+  list: async () => {
+    const response = await api.get("/settings")
+    return response.data
+  },
+
+  update: async (key: string, payload: { value: string }) => {
+    const response = await api.put(
+      `/settings/${key}`,
+      payload
+    )
+    return response.data
   },
 }

@@ -1,91 +1,99 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { PageHeader } from "@/components/PageHeader"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
 import { QuoteForm } from "./QuoteForm"
 import { QuoteBreakdownCard } from "./QuoteBreakdownCard"
-import { QuoteTable } from "@/components/QuoteTable"
-import { ErrorState } from "@/components/ui/States"
 import { useAsync } from "@/hooks/useAsync"
 import { quoteApi } from "@/api/freight"
 import { getErrorMessage } from "@/api/client"
-import { FileText } from "lucide-react"
 import type { QuoteBreakdown, QuoteCalculateRequest } from "@/types"
 
+export type LiveQuoteState =
+  | { status: "idle" }
+  | { status: "calculating" }
+  | { status: "ready"; breakdown: QuoteBreakdown; payload: QuoteCalculateRequest }
+  | { status: "error"; message: string }
+  | { status: "booking"; breakdown: QuoteBreakdown }
+  | { status: "booked"; breakdown: QuoteBreakdown }
+
 export function CustomerDashboard() {
-  // Quote history for the logged-in customer. The backend scopes /quotes to
-  // the authenticated user's own quotes for customer tokens.
   const history = useAsync(() => quoteApi.list(), [])
+  const [liveState, setLiveState] = useState<LiveQuoteState>({ status: "idle" })
 
-  const [breakdown, setBreakdown] = useState<QuoteBreakdown | null>(null)
-  const [calculating, setCalculating] = useState(false)
-  const [calcError, setCalcError] = useState<string | null>(null)
+  // Use a ref to debounce auto-calculate calls
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleCalculate = async (payload: QuoteCalculateRequest) => {
-    setCalcError(null)
-    setCalculating(true)
-    setBreakdown(null)
+  // Called by QuoteForm whenever any field changes
+  const handleFormChange = (payload: QuoteCalculateRequest | null) => {
+    // null means form is incomplete
+    if (!payload) {
+      setLiveState({ status: "idle" })
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      return
+    }
+
+    setLiveState({ status: "calculating" })
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    // Debounce 400ms so we don't spam the API on every keystroke
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await quoteApi.preview(payload)
+        setLiveState({ status: "ready", breakdown: result, payload })
+      } catch (err) {
+        setLiveState({ status: "error", message: getErrorMessage(err) })
+      }
+    }, 400)
+  }
+
+  // Book — save to DB after customer confirms
+  const handleBook = async () => {
+    if (liveState.status !== "ready") return
+    const { breakdown, payload } = liveState
+    setLiveState({ status: "booking", breakdown })  // pass breakdown here
     try {
-      const result = await quoteApi.calculate(payload)
-      setBreakdown(result)
-      // Refresh history in case the backend persisted the calculated quote.
-      history.refetch().catch(() => {})
+      await quoteApi.book(payload)
+      setLiveState({ status: "booked", breakdown })
+      history.refetch().catch(() => { })
     } catch (err) {
-      setCalcError(getErrorMessage(err))
-    } finally {
-      setCalculating(false)
+      setLiveState({ status: "error", message: getErrorMessage(err) })
     }
   }
+
+  const handleNewQuote = () => {
+    setLiveState({ status: "idle" })
+  }
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   return (
     <div>
       <PageHeader
-        title="Customer dashboard"
-        description="Request freight quotes and review your quote history."
+        title="Get a quote"
+        description="Fill in your shipment details to see an instant rate."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <QuoteForm onSubmit={handleCalculate} submitting={calculating} />
+          <QuoteForm
+            onChange={handleFormChange}
+            locked={liveState.status === "booking" || liveState.status === "booked"}
+            onReset={handleNewQuote}
+          />
         </div>
         <div className="lg:col-span-2">
-          {calcError ? (
-            <Card>
-              <CardContent>
-                <ErrorState message={calcError} />
-              </CardContent>
-            </Card>
-          ) : breakdown ? (
-            <QuoteBreakdownCard breakdown={breakdown} />
-          ) : (
-            <Card className="h-full">
-              <CardContent className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3 text-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
-                  <FileText className="h-5 w-5 text-muted-foreground" aria-hidden />
-                </div>
-                <p className="text-sm font-medium">No quote yet</p>
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  Fill in the shipment details and calculate a quote to see the
-                  full price breakdown here.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <QuoteBreakdownCard
+            liveState={liveState}
+            onBook={handleBook}
+            onNewQuote={handleNewQuote}
+          />
         </div>
       </div>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Quote history</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <QuoteTable
-            quotes={history.data ?? []}
-            loading={history.loading}
-            error={history.error}
-            onRetry={() => history.refetch().catch(() => {})}
-          />
-        </CardContent>
-      </Card>
     </div>
   )
 }
