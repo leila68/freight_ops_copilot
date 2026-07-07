@@ -133,7 +133,7 @@ export function QuoteBreakdownCard({
           sub={`Factor ×${bd.weight_factor}`}
           value={`${Number(bd.weight_adjustment) >= 0 ? "+" : ""}${formatCurrency(Number(bd.weight_adjustment))}`}
         />
-        <Row label="Fuel surcharge" value={`+${formatCurrency(Number(bd.fuel_surcharge))}`} />
+        <Row label="Fuel surcharge" sub={`${bd.fuel_surcharge_percent}% applied`} value={`+${formatCurrency(Number(bd.fuel_surcharge))}`} />
 
         {bd.accessorials.length > 0 && (
           <div className="py-2.5">

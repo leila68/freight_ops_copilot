@@ -30,6 +30,7 @@ class QuoteBreakdownResponse(BaseModel):
     equipment_adjustment: Decimal
     weight_factor: Decimal
     weight_adjustment: Decimal
+    fuel_surcharge_percent: Decimal
     fuel_surcharge: Decimal
     accessorials: list[AccessorialLineItem]
     total: Decimal

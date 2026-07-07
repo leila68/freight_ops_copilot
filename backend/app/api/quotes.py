@@ -121,6 +121,7 @@ def _calculate_breakdown(
         equipment_adjustment=equipment_adjustment.quantize(Decimal("0.01")),
         weight_factor=weight_factor.quantize(Decimal("0.0001")),
         weight_adjustment=weight_adjustment.quantize(Decimal("0.01")),
+        fuel_surcharge_percent=fuel_pct,
         fuel_surcharge=fuel_surcharge.quantize(Decimal("0.01")),
         accessorials=accessorial_items,
         total=total,

@@ -89,15 +89,21 @@ export interface AccessorialLineItem {
 
 export interface QuoteBreakdown {
   base_rate: number
-  equipment_multiplier: number // e.g. 1.25
-  equipment_adjustment: number // dollar impact of multiplier
-  weight_factor: number // e.g. 1.1
-  weight_adjustment: number // dollar impact of weight
+  // equipment multiplier from equipment_types table
+  equipment_multiplier: number
+  // dollar increase/decrease caused by equipment multiplier
+  equipment_adjustment: number
+  // weight multiplier/factor
+  weight_factor: number
+  // extra charge caused by weight
+  weight_adjustment: number
+  // percentage from settings table
+  fuel_surcharge_percent: number
+  // calculated dollar amount from fuel surcharge
   fuel_surcharge: number
   accessorials: AccessorialLineItem[]
   total: number
 }
-
 export interface Quote {
   id: string
   customer_id: string
