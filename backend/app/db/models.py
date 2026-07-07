@@ -96,6 +96,7 @@ class Quote(Base):
     total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     breakdown_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    fuel_surcharge_percent: Mapped[Decimal] = mapped_column( Numeric(5, 2), nullable=False, server_default="8.00")
 
     customer: Mapped["User"] = relationship("User", back_populates="quotes")
     lane: Mapped["Lane"] = relationship("Lane", back_populates="quotes")

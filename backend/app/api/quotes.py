@@ -167,6 +167,7 @@ def book_quote(
         equipment_adjustment=breakdown.equipment_adjustment,
         weight_adjustment=breakdown.weight_adjustment,
         fuel_surcharge=breakdown.fuel_surcharge,
+        fuel_surcharge_percent=breakdown.fuel_surcharge_percent,
         accessorials_total=sum(a.fee for a in breakdown.accessorials),
         total_price=breakdown.total,
         breakdown_json=json.dumps({
