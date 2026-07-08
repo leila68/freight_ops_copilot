@@ -9,6 +9,8 @@ from app.api.auth import router as auth_router
 from app.api.freight import router as freight_router
 from app.api.quotes import router as quotes_router
 from app.api.settings import router as settings_router
+from app.api.documents import router as documents_router
+
 
 app = FastAPI(title="Freight Ops Copilot API")
 
@@ -24,6 +26,7 @@ app.include_router(auth_router)
 app.include_router(freight_router)
 app.include_router(quotes_router)
 app.include_router(settings_router)
+app.include_router(documents_router)
 
 
 @app.get("/health")
