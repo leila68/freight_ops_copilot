@@ -1,5 +1,4 @@
 // Shared API request/response types for Freight Ops Copilot.
-// TODO: Adjust these shapes to match the real FastAPI backend contract once available.
 
 export type UserRole = "staff" | "customer"
 
@@ -156,4 +155,16 @@ export interface QuoteFilters {
   lane?: string
   date_from?: string
   date_to?: string
+}
+
+// --- Documents ---
+
+export interface Document {
+  id: string
+  title: string
+  filename: string
+  file_size: number
+  chunk_count: number
+  uploaded_by: string
+  created_at: string
 }
