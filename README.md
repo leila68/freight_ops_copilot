@@ -149,7 +149,7 @@ freight-ops-copilot/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/freight-ops-copilot.git
+git clone https://github.com/leila68/freight_ops_copilot.git
 cd freight-ops-copilot
 ```
 
