@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_LLM_MODEL: str = "gpt-4.1-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    
+    CHAT_MAX_HISTORY_MESSAGES: int = 20
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
