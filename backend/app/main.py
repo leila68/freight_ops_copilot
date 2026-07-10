@@ -10,6 +10,7 @@ from app.api.freight import router as freight_router
 from app.api.quotes import router as quotes_router
 from app.api.settings import router as settings_router
 from app.api.documents import router as documents_router
+from app.api.chat import router as chat_router
 
 
 app = FastAPI(title="Freight Ops Copilot API")
@@ -27,6 +28,7 @@ app.include_router(freight_router)
 app.include_router(quotes_router)
 app.include_router(settings_router)
 app.include_router(documents_router)
+app.include_router(chat_router)
 
 
 @app.get("/health")
