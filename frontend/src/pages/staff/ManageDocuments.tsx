@@ -68,9 +68,12 @@ export function ManageDocuments() {
       const formData = new FormData()
       formData.append("file", file)
       formData.append("title", title)
-      await api.post("/documents", formData, {
+      const response = await api.post("/documents", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       })
+      alert(
+        `Document uploaded successfully. ${response.data.chunk_count} chunks created.`
+      )
       setUploadOpen(false)
       await resource.refetch()
     } catch (err) {
@@ -114,7 +117,7 @@ export function ManageDocuments() {
           {resource.loading ? (
             <LoadingState label="Loading documents..." />
           ) : resource.error ? (
-            <ErrorState message={resource.error} onRetry={() => resource.refetch().catch(() => {})} />
+            <ErrorState message={resource.error} onRetry={() => resource.refetch().catch(() => { })} />
           ) : docs.length === 0 ? (
             <EmptyState
               title="No documents yet"

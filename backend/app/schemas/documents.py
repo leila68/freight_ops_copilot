@@ -11,6 +11,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     chunk_count: int
     uploaded_by: UUID
+    chunk_count: int
     created_at: datetime
 
     class Config:

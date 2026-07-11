@@ -66,7 +66,6 @@ def list_documents(
 
 @router.post("", response_model=DocumentResponse, status_code=201)
 async def upload_document(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(...),
     db: Session = Depends(get_db),
@@ -97,8 +96,13 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    # Process embedding in background so upload returns fast
-    background_tasks.add_task(_process_document, doc.id, file_bytes, db)
+    # # Process embedding in background so upload returns fast
+    # background_tasks.add_task(_process_document, doc.id, file_bytes, db)
+    
+     # Process document immediately
+    _process_document(doc.id, file_bytes, db)
+
+    db.refresh(doc)
 
     return doc
 
