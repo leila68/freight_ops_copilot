@@ -122,28 +122,27 @@ export interface Quote {
 
 export type CopilotMessageRole = "user" | "assistant"
 
-export interface CopilotChatRequest {
-  message: string
-  conversation_id: string | null
-}
-
 // A single status/tool-use step the backend may emit before the final answer.
 export interface CopilotStep {
   type: "status" | "tool"
   text: string // e.g. "Looking up lane rate..."
 }
 
+export interface CopilotChatRequest {
+  message: string
+  session_id?: string | null
+}
+
 export interface CopilotChatResponse {
-  conversation_id: string
-  message: string // final assistant answer
-  steps?: CopilotStep[] // optional thinking / tool-use trace
+  session_id: string
+  message: string
+  created_at: string
 }
 
 export interface CopilotMessage {
   id: string
-  role: CopilotMessageRole
+  role: "user" | "assistant"
   content: string
-  steps?: CopilotStep[]
   pending?: boolean
 }
 
