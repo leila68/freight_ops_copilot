@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models import User
-from app.ai.tools import make_sql_tools, make_rag_tool
+from app.ai.tools import make_sql_tools, make_rag_tool, make_pricing_tools
 from app.ai.prompts import build_system_prompt
 
 
@@ -39,7 +39,9 @@ def build_agent(db: Session, current_user: User):
     # 1. Build tools list
     sql_tools = make_sql_tools(db, current_user)
     rag_tool = make_rag_tool(db)
-    all_tools = sql_tools + [rag_tool]
+    pricing_tools = make_pricing_tools(db)
+    all_tools = sql_tools + rag_tool + pricing_tools
+    
 
     # 2. Initialize LLM with tools bound
     llm = ChatOpenAI(

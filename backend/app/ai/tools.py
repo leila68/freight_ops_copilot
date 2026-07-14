@@ -8,6 +8,15 @@ from langchain_core.tools import tool
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+
+from fastapi import HTTPException
+
+from app.schemas.quotes import QuoteCalculateRequest
+from app.api.quotes import _calculate_breakdown  # reuse the exact same pricing logic as /quotes/preview
+
+
 from app.db.models import (
     Quote, Lane, EquipmentType, Accessorial,
     User, DocumentChunk, Document,
@@ -237,4 +246,115 @@ def make_rag_tool(db: Session):
 
         return "\n\n---\n\n".join(results)
 
-    return search_documents
+    return [search_documents]
+
+def make_pricing_tools(db: Session):
+    """
+    Returns the quote-calculation tool, closed over the DB session.
+    Preview-only: never writes to the DB. Booking stays a manual UI action.
+    """
+
+    @tool
+    def calculate_quote(
+        origin_city: str,
+        origin_province: str,
+        destination_city: str,
+        destination_province: str,
+        equipment_type_name: str,
+        total_weight: float,
+        pickup_date: str,
+        accessorial_names: list[str] | None = None,
+    ) -> str:
+        """
+        Calculate a shipping quote price breakdown for a specific shipment.
+        Use this when the user wants a price, rate, or cost estimate for
+        shipping between two specific cities with specific weight/equipment —
+        as opposed to get_lane_info, which only gives the lane's base rate.
+        This does NOT save or book anything; it's a preview only.
+
+        Args:
+            origin_city: Origin city name (e.g. Toronto)
+            origin_province: Origin province/state abbreviation (e.g. ON)
+            destination_city: Destination city name (e.g. Montreal)
+            destination_province: Destination province/state abbreviation (e.g. QC)
+            equipment_type_name: Equipment type name, e.g. Dry Van, Reefer, Flatbed.
+                Use list_equipment_types first if unsure of exact names.
+            total_weight: Total shipment weight in lbs
+            pickup_date: Pickup date in YYYY-MM-DD format
+            accessorial_names: Optional list of accessorial service names to include,
+                e.g. ["Liftgate", "Appointment Scheduling"]. Use list_accessorials
+                first if unsure of exact names.
+        """
+        # Resolve equipment type name -> id
+        equipment = db.query(EquipmentType).filter(
+            EquipmentType.name.ilike(equipment_type_name),
+            EquipmentType.is_active == True,
+        ).first()
+        if not equipment:
+            return (
+                f"Equipment type '{equipment_type_name}' not found. "
+                f"Use list_equipment_types to see available options."
+            )
+
+        # Resolve accessorial names -> ids
+        accessorial_ids = []
+        if accessorial_names:
+            for name in accessorial_names:
+                acc = db.query(Accessorial).filter(
+                    Accessorial.name.ilike(name),
+                    Accessorial.is_active == True,
+                ).first()
+                if not acc:
+                    return (
+                        f"Accessorial '{name}' not found. "
+                        f"Use list_accessorials to see available options."
+                    )
+                accessorial_ids.append(acc.id)
+
+        # Parse date and weight
+        try:
+            parsed_date = datetime.strptime(pickup_date, "%Y-%m-%d").date()
+        except ValueError:
+            return "pickup_date must be in YYYY-MM-DD format."
+
+        try:
+            weight_decimal = Decimal(str(total_weight))
+            if weight_decimal <= 0:
+                return "total_weight must be greater than 0."
+        except InvalidOperation:
+            return "total_weight must be a valid number."
+
+        payload = QuoteCalculateRequest(
+            origin_city=origin_city,
+            origin_province=origin_province,
+            destination_city=destination_city,
+            destination_province=destination_province,
+            equipment_type_id=equipment.id,
+            total_weight=total_weight,
+            pickup_date=parsed_date,
+            accessorial_ids=accessorial_ids,
+        )
+
+        try:
+            breakdown, lane, _ = _calculate_breakdown(payload, db)
+        except HTTPException as e:
+            return e.detail
+
+        acc_lines = "\n".join(
+            f"  - {a.name}: +${a.fee}" for a in breakdown.accessorials
+        ) or "  (none)"
+
+        return (
+            f"Quote estimate for {lane.origin_city}, {lane.origin_province} -> "
+            f"{lane.destination_city}, {lane.destination_province}:\n"
+            f"Equipment: {equipment.name} (x{breakdown.equipment_multiplier})\n"
+            f"Base rate: ${breakdown.base_rate}\n"
+            f"Equipment adjustment: +${breakdown.equipment_adjustment}\n"
+            f"Weight adjustment: +${breakdown.weight_adjustment}\n"
+            f"Fuel surcharge ({breakdown.fuel_surcharge_percent}%): +${breakdown.fuel_surcharge}\n"
+            f"Accessorials:\n{acc_lines}\n"
+            f"Total: ${breakdown.total}\n\n"
+            f"(This is a preview only — nothing has been booked.)"
+        )
+
+    return [calculate_quote]
