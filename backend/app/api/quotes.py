@@ -129,35 +129,20 @@ def _calculate_breakdown(
 
     return breakdown, lane, equipment
 
-
-@router.post("/quotes/preview", response_model=QuoteBreakdownResponse)
-def preview_quote(
+def _persist_quote(
+    breakdown: QuoteBreakdownResponse,
+    lane: Lane,
+    equipment: EquipmentType,
     payload: QuoteCalculateRequest,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
+    customer_id,
+    db: Session,
+) -> Quote:
     """
-    Calculate a quote breakdown without saving anything to DB.
-    Used to show the customer a preview before they confirm.
+    Shared persistence logic used by both /quotes/book and the create_quote agent tool.
+    Assumes breakdown was already computed via _calculate_breakdown.
     """
-    breakdown, _, _ = _calculate_breakdown(payload, db)
-    return breakdown
-
-
-@router.post("/quotes/book", response_model=QuoteBreakdownResponse, status_code=201)
-def book_quote(
-    payload: QuoteCalculateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Calculate + save the quote to DB.
-    Called only when the customer confirms the preview.
-    """
-    breakdown, lane, equipment = _calculate_breakdown(payload, db)
-
     quote = Quote(
-        customer_id=current_user.id,
+        customer_id=customer_id,
         lane_id=lane.id,
         equipment_type_id=equipment.id,
         total_weight=Decimal(str(payload.total_weight)),
@@ -196,6 +181,31 @@ def book_quote(
         ))
 
     db.commit()
+    db.refresh(quote)
+    return quote
+
+@router.post("/quotes/preview", response_model=QuoteBreakdownResponse)
+def preview_quote(
+    payload: QuoteCalculateRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """
+    Calculate a quote breakdown without saving anything to DB.
+    Used to show the customer a preview before they confirm.
+    """
+    breakdown, _, _ = _calculate_breakdown(payload, db)
+    return breakdown
+
+
+@router.post("/quotes/book", response_model=QuoteBreakdownResponse, status_code=201)
+def book_quote(
+    payload: QuoteCalculateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    breakdown, lane, equipment = _calculate_breakdown(payload, db)
+    _persist_quote(breakdown, lane, equipment, payload, current_user.id, db)
     return breakdown
 
 

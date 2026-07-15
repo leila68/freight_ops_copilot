@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models import User
-from app.ai.tools import make_sql_tools, make_rag_tool, make_pricing_tools
+from app.ai.tools import make_sql_tools, make_rag_tool, make_pricing_tools, make_quote_creation_tools
 from app.ai.prompts import build_system_prompt
 
 
@@ -41,6 +41,8 @@ def build_agent(db: Session, current_user: User):
     rag_tool = make_rag_tool(db)
     pricing_tools = make_pricing_tools(db)
     all_tools = sql_tools + rag_tool + pricing_tools
+    if current_user.role == "customer":
+        all_tools += make_quote_creation_tools(db, current_user)
     
 
     # 2. Initialize LLM with tools bound

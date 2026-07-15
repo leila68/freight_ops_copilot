@@ -14,7 +14,7 @@ from decimal import Decimal, InvalidOperation
 from fastapi import HTTPException
 
 from app.schemas.quotes import QuoteCalculateRequest
-from app.api.quotes import _calculate_breakdown  # reuse the exact same pricing logic as /quotes/preview
+from app.api.quotes import _calculate_breakdown, _persist_quote  # reuse the exact same pricing logic as /quotes/preview
 
 
 from app.db.models import (
@@ -358,3 +358,84 @@ def make_pricing_tools(db: Session):
         )
 
     return [calculate_quote]
+
+
+def make_quote_creation_tools(db: Session, current_user: User):
+    """
+    Returns the quote-creation (booking) tool.
+    Writes to the DB. Customer-only — staff do not book on a customer's behalf via chat.
+    """
+
+    @tool
+    def create_quote(
+        origin_city: str,
+        origin_province: str,
+        destination_city: str,
+        destination_province: str,
+        equipment_type_name: str,
+        total_weight: float,
+        pickup_date: str,
+        accessorial_names: list[str] | None = None,
+    ) -> str:
+        """
+        Create and save a quote to the database (books the shipment as 'pending').
+        ONLY call this after the user has seen a calculate_quote breakdown AND
+        has explicitly confirmed they want to book it (e.g. said "yes", "book it",
+        "confirm", "go ahead"). NEVER call this proactively right after showing
+        a price estimate — always wait for explicit confirmation first.
+
+        Args: same as calculate_quote — origin/destination city+province,
+        equipment_type_name, total_weight, pickup_date (YYYY-MM-DD),
+        optional accessorial_names.
+        """
+        if current_user.role != "customer":
+            return "Only customers can book quotes through the assistant."
+
+        equipment = db.query(EquipmentType).filter(
+            EquipmentType.name.ilike(equipment_type_name),
+            EquipmentType.is_active == True,
+        ).first()
+        if not equipment:
+            return f"Equipment type '{equipment_type_name}' not found."
+
+        accessorial_ids = []
+        if accessorial_names:
+            for name in accessorial_names:
+                acc = db.query(Accessorial).filter(
+                    Accessorial.name.ilike(name),
+                    Accessorial.is_active == True,
+                ).first()
+                if not acc:
+                    return f"Accessorial '{name}' not found."
+                accessorial_ids.append(acc.id)
+
+        try:
+            parsed_date = datetime.strptime(pickup_date, "%Y-%m-%d").date()
+        except ValueError:
+            return "pickup_date must be in YYYY-MM-DD format."
+
+        payload = QuoteCalculateRequest(
+            origin_city=origin_city,
+            origin_province=origin_province,
+            destination_city=destination_city,
+            destination_province=destination_province,
+            equipment_type_id=equipment.id,
+            total_weight=total_weight,
+            pickup_date=parsed_date,
+            accessorial_ids=accessorial_ids,
+        )
+
+        try:
+            breakdown, lane, equipment = _calculate_breakdown(payload, db)
+        except HTTPException as e:
+            return e.detail
+
+        quote = _persist_quote(breakdown, lane, equipment, payload, current_user.id, db)
+
+        return (
+            f"Booked! Quote #{str(quote.id)[:8]} for {lane.origin_city} -> {lane.destination_city}, "
+            f"{equipment.name}, total ${breakdown.total}. Status: pending. "
+            f"You can track it in your quote history."
+        )
+
+    return [create_quote]
