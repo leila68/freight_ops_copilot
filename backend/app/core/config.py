@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-me-in-env-file"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    
+    OPENAI_API_KEY: str = ""
+    OPENAI_LLM_MODEL: str = "gpt-4.1-mini"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    
+    CHAT_MAX_HISTORY_MESSAGES: int = 20
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

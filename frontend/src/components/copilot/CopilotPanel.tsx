@@ -26,6 +26,8 @@ export function CopilotPanel() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
+  const [sessionId, setSessionId] = useState<string | null>(null)
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -36,43 +38,43 @@ export function CopilotPanel() {
     if (open) inputRef.current?.focus()
   }, [open])
 
-  const send = async (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed || sending) return
 
-    setError(null)
-    const userMsg: CopilotMessage = { id: nextId(), role: "user", content: trimmed }
-    const pendingMsg: CopilotMessage = {
-      id: nextId(),
-      role: "assistant",
-      content: "",
-      pending: true,
-    }
-    setMessages((m) => [...m, userMsg, pendingMsg])
-    setInput("")
-    setSending(true)
+const send = async (text: string) => {
+  const trimmed = text.trim()
+  if (!trimmed || sending) return
 
-    try {
-      const res = await copilotApi.chat({
-        message: trimmed,
-        conversation_id: conversationId,
-      })
-      setConversationId(res.conversation_id)
-      setMessages((m) =>
-        m.map((msg) =>
-          msg.id === pendingMsg.id
-            ? { ...msg, content: res.message, steps: res.steps, pending: false }
-            : msg,
-        ),
-      )
-    } catch (err) {
-      setError(getErrorMessage(err))
-      // Remove the pending placeholder on failure.
-      setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
-    } finally {
-      setSending(false)
-    }
+  setError(null)
+  const userMsg: CopilotMessage = { id: nextId(), role: "user", content: trimmed }
+  const pendingMsg: CopilotMessage = {
+    id: nextId(),
+    role: "assistant",
+    content: "",
+    pending: true,
   }
+  setMessages((m) => [...m, userMsg, pendingMsg])
+  setInput("")
+  setSending(true)
+
+  try {
+    const res = await copilotApi.chat({
+      message: trimmed,
+      session_id: sessionId,
+    })
+    setSessionId(res.session_id)
+    setMessages((m) =>
+      m.map((msg) =>
+        msg.id === pendingMsg.id
+          ? { ...msg, content: res.message, pending: false }
+          : msg,
+      ),
+    )
+  } catch (err) {
+    setError(getErrorMessage(err))
+    setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
+  } finally {
+    setSending(false)
+  }
+}
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -217,21 +219,6 @@ function MessageBubble({ message }: { message: CopilotMessage }) {
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div className={cn("flex max-w-[85%] flex-col gap-1", isUser && "items-end")}>
-        {/* Tool / status steps */}
-        {!isUser && message.steps && message.steps.length > 0 && (
-          <div className="flex flex-col gap-1">
-            {message.steps.map((step, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                {step.text}
-              </div>
-            ))}
-          </div>
-        )}
-
         <div
           className={cn(
             "rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
