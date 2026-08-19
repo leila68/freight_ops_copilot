@@ -11,6 +11,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- Database ---
+    DATABASE_URL: str = ""
+    
     POSTGRES_USER: str = "freight_user"
     POSTGRES_PASSWORD: str = "freight_pass"
     POSTGRES_DB: str = "freight_ops"
@@ -18,7 +20,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
 
     # --- Auth (used starting next phase) ---
-    JWT_SECRET_KEY: str = "change-me-in-env-file"
+    JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
@@ -32,10 +34,13 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+
         return (
             f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
+    )
 
 
 # Single shared settings instance, imported wherever config is needed
