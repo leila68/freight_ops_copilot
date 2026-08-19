@@ -17,7 +17,10 @@ app = FastAPI(title="Freight Ops Copilot API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+      allow_origins=[
+        "http://localhost:5173",
+        "https://freight-ops-copilot.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
