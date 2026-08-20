@@ -5,8 +5,12 @@ Adjust these two imports to match your project's actual dependency module:
     get_db            -> yields a SQLAlchemy Session
     get_current_user   -> resolves the authenticated User from the request
 """
+
 import logging
 from uuid import UUID
+import os
+from datetime import datetime, timezone
+from sqlalchemy import func
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -33,9 +37,12 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 # Keep this bounded so token usage doesn't grow unbounded on long sessions.
 MAX_HISTORY_MESSAGES = 20
 TITLE_MAX_LEN = 60
+CHAT_DAILY_LIMIT = int(os.getenv("CHAT_DAILY_LIMIT", "5"))
 
 
-def _get_owned_session(db: Session, session_id: UUID, current_user: User) -> ChatSession:
+def _get_owned_session(
+    db: Session, session_id: UUID, current_user: User
+) -> ChatSession:
     session = (
         db.query(ChatSession)
         .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
@@ -43,7 +50,9 @@ def _get_owned_session(db: Session, session_id: UUID, current_user: User) -> Cha
     )
     if session is None:
         # 404, not 403 — don't leak whether the session exists for another user.
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found"
+        )
     return session
 
 
@@ -67,7 +76,9 @@ async def send_message(
     if payload.session_id is not None:
         session = _get_owned_session(db, payload.session_id, current_user)
     else:
-        session = ChatSession(user_id=current_user.id, title=_make_title(payload.message))
+        session = ChatSession(
+            user_id=current_user.id, title=_make_title(payload.message)
+        )
         db.add(session)
         db.flush()  # assigns session.id without committing yet
 
@@ -81,6 +92,26 @@ async def send_message(
         .all()
     )
     history = [{"role": m.role, "content": m.content} for m in prior_messages]
+
+    if CHAT_DAILY_LIMIT > 0:
+        today = datetime.now(timezone.utc).date()
+
+        messages_today = (
+            db.query(func.count(ChatMessage.id))
+            .join(ChatSession, ChatMessage.session_id == ChatSession.id)
+            .filter(
+                ChatSession.user_id == current_user.id,
+                ChatMessage.role == "user",
+                func.date(ChatMessage.created_at) == today,
+            )
+            .scalar()
+        ) or 0
+
+        if messages_today >= CHAT_DAILY_LIMIT:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily demo limit reached. Please try again tomorrow.",
+            )
 
     # Persist the user's message before calling the agent so it isn't lost
     # if the agent call fails partway through.
