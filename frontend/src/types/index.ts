@@ -65,6 +65,13 @@ export interface Lane {
   is_active: boolean
 }
 
+export interface LaneCityPair {
+  origin_city: string
+  origin_province: string
+  destination_city: string
+  destination_province: string
+}
+
 // --- Quotes ---
 
 export type QuoteStatus = "pending" | "accepted" | "expired" | "rejected"

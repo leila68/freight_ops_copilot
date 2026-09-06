@@ -3,6 +3,7 @@ import type {
   Accessorial,
   EquipmentType,
   Lane,
+  LaneCityPair,
   Quote,
   QuoteBreakdown,
   QuoteCalculateRequest,
@@ -50,6 +51,10 @@ export const accessorialApi = {
 export const laneApi = {
   list: async (): Promise<Lane[]> => {
     const { data } = await api.get<Lane[]>("/lanes")
+    return data
+  },
+  cityPairs: async (): Promise<LaneCityPair[]> => {
+    const { data } = await api.get<LaneCityPair[]>("/lanes/city-pairs")
     return data
   },
   create: async (payload: Omit<Lane, "id" | "is_active">): Promise<Lane> => {
