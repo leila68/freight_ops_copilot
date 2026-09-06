@@ -70,3 +70,12 @@ class LaneResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class LaneCityPair(BaseModel):
+    origin_city: str
+    origin_province: str
+    destination_city: str
+    destination_province: str
+
+    class Config:
+        from_attributes = True
