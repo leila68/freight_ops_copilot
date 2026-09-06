@@ -12,7 +12,7 @@ from app.db.models import EquipmentType, Accessorial, Lane
 from app.schemas.freight import (
     EquipmentTypeCreate, EquipmentTypeResponse,
     AccessorialCreate, AccessorialResponse,
-    LaneCreate, LaneResponse,
+    LaneCreate, LaneResponse, LaneCityPair,
 )
 from app.api.auth import get_current_user
 from app.db.models import User
@@ -151,7 +151,38 @@ def list_lanes(
 ):
     return db.query(Lane).filter(Lane.is_active == True).all()
 
+@router.get("/lanes/city-pairs", response_model=list[LaneCityPair])
+def get_lane_city_pairs(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """
+    Returns distinct origin/destination city pairs with an active lane,
+    so the quote form can restrict destination choices to cities that
+    actually have a rate from the selected origin.
+    """
+    pairs = (
+        db.query(
+            Lane.origin_city,
+            Lane.origin_province,
+            Lane.destination_city,
+            Lane.destination_province,
+        )
+        .filter(Lane.is_active == True)
+        .distinct()
+        .all()
+    )
 
+    return [
+        LaneCityPair(
+            origin_city=p.origin_city,
+            origin_province=p.origin_province,
+            destination_city=p.destination_city,
+            destination_province=p.destination_province,
+        )
+        for p in pairs
+    ]
+    
 @router.post("/lanes", response_model=LaneResponse, status_code=201)
 def create_lane(
     payload: LaneCreate,
