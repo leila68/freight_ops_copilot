@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -7,9 +7,8 @@ import { Field } from "@/components/ui/Field"
 import { Checkbox } from "@/components/ui/Checkbox"
 import { LoadingState, ErrorState } from "@/components/ui/States"
 import { useAsync } from "@/hooks/useAsync"
-import { equipmentApi, accessorialApi } from "@/api/freight"
+import { equipmentApi, accessorialApi, laneApi } from "@/api/freight"
 import { formatCurrency } from "@/lib/format"
-import { CANADIAN_CITIES } from "@/data/canadianCities"
 import type { QuoteCalculateRequest } from "@/types"
 import { RotateCcw } from "lucide-react"
 
@@ -35,12 +34,14 @@ function CitySelect({
   onChange,
   placeholder,
   disabled,
+  cities,
 }: {
   id: string
   value: string
   onChange: (city: string, province: string) => void
   placeholder: string
   disabled?: boolean
+  cities: { city: string; province_code: string }[]
 }) {
   const [search, setSearch] = useState(value)
   const [open, setOpen] = useState(false)
@@ -48,8 +49,8 @@ function CitySelect({
   useEffect(() => { setSearch(value) }, [value])
 
   const filtered = search.length < 1
-    ? CANADIAN_CITIES
-    : CANADIAN_CITIES.filter((c) =>
+    ? cities
+    : cities.filter((c) =>
         c.city.toLowerCase().startsWith(search.toLowerCase()) ||
         c.province_code.toLowerCase().startsWith(search.toLowerCase())
       )
@@ -61,7 +62,15 @@ function CitySelect({
         value={search}
         onChange={(e) => { setSearch(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => {
+          setTimeout(() => {
+            setOpen(false)
+            const match = cities.find(
+              (c) => c.city.toLowerCase() === search.toLowerCase()
+            )
+            if (!match) setSearch(value) // revert free-typed text that isn't a valid option
+          }, 150)
+        }}
         placeholder={placeholder}
         autoComplete="off"
         disabled={disabled}
@@ -92,9 +101,34 @@ function CitySelect({
 export function QuoteForm({ onChange, locked, onReset }: QuoteFormProps) {
   const equipment = useAsync(() => equipmentApi.list(), [])
   const accessorials = useAsync(() => accessorialApi.list(), [])
+  const lanePairs = useAsync(() => laneApi.cityPairs(), [])
 
   const [form, setForm] = useState(emptyForm)
   const [selectedAccessorials, setSelectedAccessorials] = useState<string[]>([])
+
+  // Derive valid origins and the destination list scoped to the selected origin
+  const { origins, destinationsByOrigin } = useMemo(() => {
+    const pairs = lanePairs.data ?? []
+    const originMap = new Map<string, { city: string; province_code: string }>()
+    const destMap = new Map<string, { city: string; province_code: string }[]>()
+
+    for (const p of pairs) {
+      const originKey = `${p.origin_city}|${p.origin_province}`
+      if (!originMap.has(originKey)) {
+        originMap.set(originKey, { city: p.origin_city, province_code: p.origin_province })
+      }
+
+      const dest = { city: p.destination_city, province_code: p.destination_province }
+      const list = destMap.get(originKey) ?? []
+      list.push(dest)
+      destMap.set(originKey, list)
+    }
+
+    return { origins: [...originMap.values()], destinationsByOrigin: destMap }
+  }, [lanePairs.data])
+
+  const originKey = `${form.origin_city}|${form.origin_province}`
+  const availableDestinations = form.origin_city ? destinationsByOrigin.get(originKey) ?? [] : []
 
   // Notify parent whenever form changes — passes null if required fields missing
   useEffect(() => {
@@ -136,7 +170,13 @@ export function QuoteForm({ onChange, locked, onReset }: QuoteFormProps) {
 
   const handleCityChange = (side: "origin" | "destination", city: string, province: string) => {
     if (side === "origin") {
-      setForm((f) => ({ ...f, origin_city: city, origin_province: province }))
+      setForm((f) => ({
+        ...f,
+        origin_city: city,
+        origin_province: province,
+        destination_city: "",
+        destination_province: "",
+      }))
     } else {
       setForm((f) => ({ ...f, destination_city: city, destination_province: province }))
     }
@@ -148,8 +188,8 @@ export function QuoteForm({ onChange, locked, onReset }: QuoteFormProps) {
     )
   }
 
-  const referenceLoading = equipment.loading || accessorials.loading
-  const referenceError = equipment.error || accessorials.error
+  const referenceLoading = equipment.loading || accessorials.loading || lanePairs.loading
+  const referenceError = equipment.error || accessorials.error || lanePairs.error
 
   return (
     <Card>
@@ -176,6 +216,7 @@ export function QuoteForm({ onChange, locked, onReset }: QuoteFormProps) {
             onRetry={() => {
               equipment.refetch().catch(() => {})
               accessorials.refetch().catch(() => {})
+              lanePairs.refetch().catch(() => {})
             }}
           />
         ) : (
@@ -192,6 +233,7 @@ export function QuoteForm({ onChange, locked, onReset }: QuoteFormProps) {
                     <CitySelect
                       id="origin_city"
                       value={form.origin_city}
+                      cities={origins}
                       placeholder="Search city..."
                       onChange={(city, province) => handleCityChange("origin", city, province)}
                       disabled={locked}
@@ -216,9 +258,10 @@ export function QuoteForm({ onChange, locked, onReset }: QuoteFormProps) {
                     <CitySelect
                       id="destination_city"
                       value={form.destination_city}
-                      placeholder="Search city..."
+                      cities={availableDestinations}
+                      placeholder={form.origin_city ? "Search city..." : "Select an origin first"}
                       onChange={(city, province) => handleCityChange("destination", city, province)}
-                      disabled={locked}
+                      disabled={locked || !form.origin_city}
                     />
                   </Field>
                 </div>
