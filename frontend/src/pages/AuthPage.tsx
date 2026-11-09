@@ -177,9 +177,7 @@ export function AuthPage() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          {/* TODO: wire to real backend at VITE_API_URL */}
-          Connects to the Freight Ops API. Configure VITE_API_URL to point at
-          your backend.
+          Calculate freight quotes, manage pricing, and keep track of your quote history
         </p>
       </div>
     </main>
